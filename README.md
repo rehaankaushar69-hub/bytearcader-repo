@@ -66,19 +66,19 @@ See [Architecture Documentation](docs/ARCHITECTURE.md) for detailed data-flow di
 
 ### Prerequisites
 
-- Node.js 20+ and npm
+- Node.js 22.12+ (LTS) and npm
 
 ### Setup Commands
 
 ```bash
-# 1. Clone the repository (use your authenticated GitHub account when publishing/forking)
-git clone https://github.com/<your-github-username>/bytearcader-repo.git
+# 1. Clone the repository
+git clone https://github.com/rehaankaushar69-hub/bytearcader-repo.git
 cd bytearcader-repo
 
-# 2. Install dependencies
-npm install
+# 2. Install dependencies cleanly from package-lock.json
+npm ci
 
-# 3. Configure environment variables
+# 3. Configure environment variables (optional)
 cp .env.example .env
 
 # 4. Start the development server on http://localhost:3000

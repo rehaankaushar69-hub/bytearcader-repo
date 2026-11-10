@@ -25,9 +25,14 @@ import { AppPage } from './Navbar';
 interface PageActionProps {
   onNavigate: (page: AppPage) => void;
   onInspectRepo?: (repo: string) => void;
+  onRunDemo?: () => void;
 }
 
-export const FeaturesPage: React.FC<PageActionProps> = ({ onNavigate, onInspectRepo }) => {
+export const FeaturesPage: React.FC<PageActionProps> = ({
+  onNavigate,
+  onInspectRepo,
+  onRunDemo,
+}) => {
   const modules = [
     {
       num: '01.',
@@ -185,21 +190,30 @@ export const FeaturesPage: React.FC<PageActionProps> = ({ onNavigate, onInspectR
       <div className="bg-[#11192E] border border-slate-800 rounded-xl p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div className="space-y-1">
           <h3 className="font-display text-lg font-bold text-white">
-            Test All 10 Modules Live on the Dashboard
+            Test All 10 Modules on the Dashboard
           </h3>
           <p className="text-xs text-slate-300">
-            Run a live audit on any public GitHub repository or inspect{' '}
-            <code className="text-cyan-300 font-mono">bytearcader-ai/bytearcader-repo</code>.
+            Run a live audit on any public GitHub repository or launch the clearly labelled{' '}
+            <strong className="text-amber-300">Offline Demo Mode</strong>.
           </p>
         </div>
         <div className="flex flex-wrap gap-3 shrink-0">
           {onInspectRepo && (
             <button
               type="button"
-              onClick={() => onInspectRepo('bytearcader-ai/bytearcader-repo')}
+              onClick={() => onInspectRepo('vitejs/vite')}
               className="px-5 py-2.5 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-semibold text-xs rounded-lg transition-colors cursor-pointer"
             >
-              Audit bytearcader-repo
+              Audit Public Repo (vitejs/vite)
+            </button>
+          )}
+          {onRunDemo && (
+            <button
+              type="button"
+              onClick={onRunDemo}
+              className="px-5 py-2.5 bg-amber-400/15 hover:bg-amber-400/25 text-amber-300 border border-amber-500/40 font-semibold text-xs rounded-lg transition-colors cursor-pointer"
+            >
+              Launch Offline Demo Mode
             </button>
           )}
           <button
@@ -369,7 +383,10 @@ npm test`}
   );
 };
 
-export const ContributePage: React.FC<PageActionProps> = ({ onInspectRepo }) => {
+export const ContributePage: React.FC<PageActionProps> = ({
+  onInspectRepo,
+  onRunDemo,
+}) => {
   return (
     <div className="max-w-[1120px] mx-auto px-6 py-12 space-y-12">
       <div className="max-w-3xl space-y-4">
@@ -457,17 +474,26 @@ export const ContributePage: React.FC<PageActionProps> = ({ onInspectRepo }) => 
           ))}
         </div>
 
-        {onInspectRepo && (
-          <div className="pt-4">
+        <div className="pt-4 flex flex-wrap gap-3">
+          {onInspectRepo && (
             <button
               type="button"
-              onClick={() => onInspectRepo('bytearcader-ai/bytearcader-repo')}
+              onClick={() => onInspectRepo('vitejs/vite')}
               className="px-5 py-2.5 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-semibold text-xs rounded-lg transition-colors cursor-pointer"
             >
-              Run Self-Audit on bytearcader-repo Now
+              Inspect Public Repo (vitejs/vite)
             </button>
-          </div>
-        )}
+          )}
+          {onRunDemo && (
+            <button
+              type="button"
+              onClick={onRunDemo}
+              className="px-5 py-2.5 bg-amber-400/15 hover:bg-amber-400/25 text-amber-300 border border-amber-500/40 font-semibold text-xs rounded-lg transition-colors cursor-pointer"
+            >
+              Launch Offline Demo Mode
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

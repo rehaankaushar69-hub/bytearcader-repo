@@ -29,11 +29,29 @@
 }
 
 @media print {
-  body {
+  @page {
+    margin: 12mm;
+  }
+
+  html,
+  body,
+  #root,
+  main {
     background-color: #ffffff !important;
     color: #0f172a !important;
+    min-height: auto !important;
   }
+
   .no-print {
     display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-break-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

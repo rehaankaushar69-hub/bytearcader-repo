@@ -22,6 +22,7 @@ interface LandingPageProps {
   repoInput: string;
   setRepoInput: (val: string) => void;
   onAnalyze: (repoIdentifier: string) => void;
+  onRunDemo: () => void;
   isLoading: boolean;
   error: string | null;
   onNavigate: (page: AppPage) => void;
@@ -29,10 +30,9 @@ interface LandingPageProps {
 }
 
 const SAMPLE_REPOS = [
-  { label: 'bytearcader-ai/bytearcader-repo', description: 'Self-audit this repository' },
-  { label: 'vitejs/vite', description: 'Frontend build tooling' },
-  { label: 'expressjs/express', description: 'Node.js web framework' },
-  { label: 'facebook/react', description: 'UI component library' },
+  { label: 'vitejs/vite', description: 'Third-party public repo (Frontend tooling)' },
+  { label: 'expressjs/express', description: 'Third-party public repo (Node.js framework)' },
+  { label: 'facebook/react', description: 'Third-party public repo (UI library)' },
 ];
 
 const SCORING_WEIGHTS = [
@@ -145,6 +145,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   repoInput,
   setRepoInput,
   onAnalyze,
+  onRunDemo,
   isLoading,
   error,
   onNavigate,
@@ -256,20 +257,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 )}
               </form>
 
-              {/* Quick Inspect Presets */}
-              <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-wrap items-center gap-2">
-                <span className="text-xs text-slate-400 mr-1">Quick inspect:</span>
-                {SAMPLE_REPOS.map((sample) => (
-                  <button
-                    key={sample.label}
-                    type="button"
-                    disabled={isLoading}
-                    onClick={() => handleSelectSample(sample.label)}
-                    className="px-3 py-1.5 text-xs font-mono text-slate-200 bg-[#0B1120] hover:bg-slate-800/90 hover:text-cyan-300 border border-slate-800 rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                  >
-                    {sample.label}
-                  </button>
-                ))}
+              {/* Quick Inspect Third-Party Public Presets + Separate DEMO Mode */}
+              <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-slate-400 mr-1">
+                    Third-party public repos (live GitHub API):
+                  </span>
+                  {SAMPLE_REPOS.map((sample) => (
+                    <button
+                      key={sample.label}
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => handleSelectSample(sample.label)}
+                      title={sample.description}
+                      className="px-3 py-1.5 text-xs font-mono text-slate-200 bg-[#0B1120] hover:bg-slate-800/90 hover:text-cyan-300 border border-slate-800 rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                    >
+                      {sample.label}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isLoading}
+                  onClick={onRunDemo}
+                  data-testid="landing-demo-mode-btn"
+                  className="px-3 py-1.5 text-xs font-semibold text-amber-300 bg-amber-950/40 hover:bg-amber-900/50 border border-amber-700/60 rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  Offline Demo Mode (DEMO)
+                </button>
               </div>
             </div>
           </div>
@@ -315,13 +331,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
 
             <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-              <span>Target Repo: bytearcader-repo</span>
+              <span>Project Repository: bytearcader-repo</span>
               <button
                 type="button"
-                onClick={() => handleSelectSample('bytearcader-ai/bytearcader-repo')}
-                className="text-cyan-300 hover:text-cyan-200 font-semibold inline-flex items-center gap-1 cursor-pointer"
+                onClick={onRunDemo}
+                className="text-amber-300 hover:text-amber-200 font-semibold inline-flex items-center gap-1 cursor-pointer"
               >
-                <span>Verify 100/100 Self-Audit</span>
+                <span>Preview Offline Demo Report</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -480,10 +496,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-3">
               <button
                 type="button"
-                onClick={() => handleSelectSample('bytearcader-ai/bytearcader-repo')}
+                onClick={() => handleSelectSample('vitejs/vite')}
                 className="w-full px-5 py-3 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-semibold text-sm rounded-lg transition-colors text-center whitespace-nowrap cursor-pointer"
               >
-                Audit bytearcader-repo (100/100)
+                Live Audit: vitejs/vite (Third-Party)
               </button>
               <button
                 type="button"

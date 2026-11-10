@@ -1,14 +1,23 @@
 # Dependencies
 node_modules/
+bun.lock
 
 # Build outputs
 dist/
 server.js
 
-# Environment variables & secrets
+# Environment variables & secrets (Never commit secrets)
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.json
+service-account*.json
 
 # Logs & OS files
 npm-debug.log*
@@ -17,6 +26,7 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Browser verification artifacts
+# Browser verification & test artifacts
 .playwright-cli/
+.aistudio/
 coverage/

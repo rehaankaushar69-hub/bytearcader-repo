@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import express, { NextFunction, Request, Response } from 'express';
-import fs from 'fs';
+import http from 'http';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import {
@@ -35,6 +35,9 @@ export const GITHUB_TIMEOUT_MS =
   Number.isFinite(parsedTimeoutMs) && parsedTimeoutMs > 0
     ? parsedTimeoutMs
     : DEFAULT_GITHUB_TIMEOUT_MS;
+
+export const REPO_NOT_FOUND_MESSAGE =
+  'Repository not found or inaccessible. Please verify the URL.';
 
 interface CacheEntry {
   report: AnalysisReport;
@@ -96,7 +99,6 @@ async function fetchWithTimeout(
       ...options,
       signal: controller.signal,
     });
-    // Keep the abort timer alive until the caller finishes consuming the body (or timeoutMs elapses)
     const origJson = res.json.bind(res);
     const origText = res.text.bind(res);
     res.json = async () => {
@@ -113,7 +115,6 @@ async function fetchWithTimeout(
         clearTimeout(timer);
       }
     };
-    // Ensure timer is cleaned up at most after timeoutMs
     timer.unref?.();
     return res;
   } catch (err) {
@@ -256,7 +257,6 @@ async function verifyExternalLinksSample(
         expiresAt: Date.now() + CACHE_TTL_MS,
       });
     } catch (firstErr: unknown) {
-      // Retry once on transient socket/timeout error for deterministic reproducibility
       try {
         const retryOutcome = await probeSingleUrlOnce(url, 2500);
         results[url] = retryOutcome;
@@ -314,103 +314,37 @@ async function verifyExternalLinksSample(
 }
 
 /**
- * Builds a real analysis report for the local ByteArcadeR RepoGuard workspace
- * when the user inspects "bytearcader-ai/bytearcader-repo".
+ * Generates an explicitly labelled, offline DEMO mode report so users can preview
+ * the 22-check dashboard UI without querying a live GitHub repository.
+ * Never claims to be a live GitHub repository and sets commitSha to null (NOT VERIFIED).
  */
-function analyzeLocalWorkspaceRepo(owner: string, repo: string): AnalysisReport {
-  const rootDir = process.cwd();
-  const readSafeDir = (
-    relDir: string
-  ): { name: string; path: string; type: 'file' | 'dir'; size: number }[] => {
-    const target = path.join(rootDir, relDir);
-    if (!fs.existsSync(target)) return [];
-    try {
-      return fs
-        .readdirSync(target, { withFileTypes: true })
-        .filter(
-          (d) =>
-            d.name !== 'node_modules' &&
-            d.name !== '.git' &&
-            d.name !== 'dist' &&
-            d.name !== '.playwright-cli'
-        )
-        .map((d) => {
-          const itemRelPath = relDir ? `${relDir}/${d.name}` : d.name;
-          let size = 0;
-          if (d.isFile()) {
-            try {
-              size = fs.statSync(path.join(target, d.name)).size;
-            } catch {
-              size = 0;
-            }
-          }
-          return {
-            name: d.name,
-            path: itemRelPath,
-            type: d.isDirectory() ? 'dir' : 'file',
-            size,
-          };
-        });
-    } catch {
-      return [];
-    }
-  };
-
-  const collectRecursivePaths = (relDir: string, acc: string[] = []): string[] => {
-    const entries = readSafeDir(relDir);
-    for (const entry of entries) {
-      acc.push(entry.path);
-      if (entry.type === 'dir') {
-        collectRecursivePaths(entry.path, acc);
-      }
-    }
-    return acc;
-  };
-
-  const rootContents = readSafeDir('');
-  const githubDirContents = readSafeDir('.github');
-  const workflowsContents = readSafeDir('.github/workflows');
-  const docsContents = readSafeDir('docs');
-  const treePaths = collectRecursivePaths('');
-
-  const readmePath = path.join(rootDir, 'README.md');
-  const readmeExists = fs.existsSync(readmePath);
-  const readmeContent = readmeExists ? fs.readFileSync(readmePath, 'utf-8') : '';
-
+export function buildOfflineDemoReport(): AnalysisReport {
   const nowIso = new Date().toISOString();
-  const localHeadSha = 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678';
-  const input: RawGitHubAuditInput = {
+  const demoInput: RawGitHubAuditInput = {
     nowIso,
-    headCommitSha: localHeadSha,
+    headCommitSha: null,
     repo: {
-      owner: { login: owner },
-      name: repo,
-      full_name: `${owner}/${repo}`,
-      html_url: `https://github.com/${owner}/${repo}`,
+      owner: { login: 'demo-showcase' },
+      name: 'sample-repository-demo',
+      full_name: 'demo-showcase/sample-repository-demo',
+      html_url: 'https://github.com',
       description:
-        'Protect Your Code. Improve Your Repository. Open-source GitHub repository health, security, documentation, and structure analyzer by ByteArcadeR AI.',
-      homepage: 'https://github.com/bytearcader-ai/bytearcader-repo',
+        '[DEMO MODE] Offline demonstration dataset illustrating how ByteArcadeR RepoGuard evaluates README quality, SPDX licensing, community governance, and repository structure.',
+      homepage: null,
       default_branch: 'main',
-      stargazers_count: 1,
+      stargazers_count: 0,
       forks_count: 0,
-      subscribers_count: 1,
+      subscribers_count: 0,
       open_issues_count: 0,
       language: 'TypeScript',
-      topics: [
-        'github-analyzer',
-        'repository-health',
-        'security-audit',
-        'developer-tools',
-        'open-source',
-        'bytearcader',
-      ],
+      topics: ['demo-mode', 'offline-sample', 'repoguard'],
       created_at: nowIso,
       updated_at: nowIso,
       pushed_at: nowIso,
-      size: 420,
+      size: 256,
       archived: false,
       disabled: false,
-      visibility: 'public',
+      visibility: 'demo',
       license: {
         key: 'mit',
         name: 'MIT License',
@@ -418,115 +352,55 @@ function analyzeLocalWorkspaceRepo(owner: string, repo: string): AnalysisReport 
         url: 'https://api.github.com/licenses/mit',
       },
     },
-    rootContents,
-    githubDirContents,
-    workflowsContents,
-    docsContents,
-    treePaths,
-    readme: {
-      exists: readmeExists,
-      name: readmeExists ? 'README.md' : null,
-      content: readmeContent,
-    },
-    commits: [
-      {
-        sha: localHeadSha,
-        html_url: `https://github.com/${owner}/${repo}`,
-        commit: {
-          message: 'feat: implement deterministic 100-point repository health scoring engine',
-          author: { name: 'ByteArcadeR AI', date: nowIso },
-        },
-        author: { login: 'bytearcader-ai' },
-      },
-      {
-        sha: 'b2c3d4e5f60718293a4b5c6d7e8f90123456789a',
-        html_url: `https://github.com/${owner}/${repo}`,
-        commit: {
-          message:
-            'feat: add GitHub REST API integration with timeout, caching, and rate-limit awareness',
-          author: { name: 'ByteArcadeR AI', date: nowIso },
-        },
-        author: { login: 'bytearcader-ai' },
-      },
-      {
-        sha: 'c3d4e5f60718293a4b5c6d7e8f90123456789ab1',
-        html_url: `https://github.com/${owner}/${repo}`,
-        commit: {
-          message:
-            'docs: add comprehensive README, CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, and MIT LICENSE',
-          author: { name: 'ByteArcadeR AI', date: nowIso },
-        },
-        author: { login: 'bytearcader-ai' },
-      },
-      {
-        sha: 'd4e5f60718293a4b5c6d7e8f90123456789ab12c',
-        html_url: `https://github.com/${owner}/${repo}`,
-        commit: {
-          message: 'ci: configure GitHub Actions workflow and automated test suite',
-          author: { name: 'ByteArcadeR AI', date: nowIso },
-        },
-        author: { login: 'bytearcader-ai' },
-      },
-      {
-        sha: 'e5f60718293a4b5c6d7e8f90123456789ab12cd3',
-        html_url: `https://github.com/${owner}/${repo}`,
-        commit: {
-          message: 'feat: build broken documentation link checker and community health verifier',
-          author: { name: 'ByteArcadeR AI', date: nowIso },
-        },
-        author: { login: 'bytearcader-ai' },
-      },
-      {
-        sha: 'f60718293a4b5c6d7e8f90123456789ab12cd34e',
-        html_url: `https://github.com/${owner}/${repo}`,
-        commit: {
-          message: 'feat: add JSON report download and printable executive summary support',
-          author: { name: 'ByteArcadeR AI', date: nowIso },
-        },
-        author: { login: 'bytearcader-ai' },
-      },
-      {
-        sha: '0718293a4b5c6d7e8f90123456789ab12cd34ef5',
-        html_url: `https://github.com/${owner}/${repo}`,
-        commit: {
-          message: 'test: add unit tests for URL validation, scoring deductions, and edge cases',
-          author: { name: 'ByteArcadeR AI', date: nowIso },
-        },
-        author: { login: 'bytearcader-ai' },
-      },
-      {
-        sha: '18293a4b5c6d7e8f90123456789ab12cd34ef560',
-        html_url: `https://github.com/${owner}/${repo}`,
-        commit: {
-          message: 'feat: design custom ByteArcadeR RepoGuard shield logo and responsive SaaS UI',
-          author: { name: 'ByteArcadeR AI', date: nowIso },
-        },
-        author: { login: 'bytearcader-ai' },
-      },
-      {
-        sha: '293a4b5c6d7e8f90123456789ab12cd34ef56071',
-        html_url: `https://github.com/${owner}/${repo}`,
-        commit: {
-          message: 'docs: add GitHub Issue templates and Pull Request template',
-          author: { name: 'ByteArcadeR AI', date: nowIso },
-        },
-        author: { login: 'bytearcader-ai' },
-      },
-      {
-        sha: '3a4b5c6d7e8f90123456789ab12cd34ef5607182',
-        html_url: `https://github.com/${owner}/${repo}`,
-        commit: {
-          message: 'chore: initial repository scaffold for bytearcader-repo',
-          author: { name: 'ByteArcadeR AI', date: nowIso },
-        },
-        author: { login: 'bytearcader-ai' },
-      },
+    rootContents: [
+      { name: 'README.md', path: 'README.md', type: 'file', size: 1450 },
+      { name: 'LICENSE', path: 'LICENSE', type: 'file', size: 1080 },
+      { name: 'CONTRIBUTING.md', path: 'CONTRIBUTING.md', type: 'file', size: 1200 },
+      { name: 'SECURITY.md', path: 'SECURITY.md', type: 'file', size: 950 },
+      { name: '.gitignore', path: '.gitignore', type: 'file', size: 220 },
+      { name: 'package.json', path: 'package.json', type: 'file', size: 840 },
+      { name: 'src', path: 'src', type: 'dir', size: 0 },
+      { name: '.github', path: '.github', type: 'dir', size: 0 },
     ],
+    githubDirContents: [
+      { name: 'workflows', path: '.github/workflows', type: 'dir' },
+      { name: 'PULL_REQUEST_TEMPLATE.md', path: '.github/PULL_REQUEST_TEMPLATE.md', type: 'file' },
+    ],
+    workflowsContents: [{ name: 'ci.yml', path: '.github/workflows/ci.yml', type: 'file' }],
+    docsContents: [],
+    readme: {
+      exists: true,
+      name: 'README.md',
+      content: `# Offline Demo Project (DEMO MODE)
+
+![Demo Badge](docs/demo-badge.svg)
+
+## Overview
+This is a synthetic offline demonstration report built into ByteArcadeR RepoGuard so you can preview the 22-check rubric, deduction ledger, and printable report format without making live GitHub API requests.
+
+## Installation
+Install dependencies and start the development server:
+\`\`\`bash
+npm install
+npm run dev
+\`\`\`
+
+## Usage
+Run the test suite to verify the scoring rubric:
+\`\`\`bash
+npm test
+\`\`\`
+
+## Governance & License
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [LICENSE](LICENSE) for details.
+`,
+    },
+    commits: [],
     issues: [],
     verification: {
       rootContentsVerified: true,
       readmeVerified: true,
-      commitsVerified: true,
+      commitsVerified: false,
       issuesVerified: true,
       githubDirVerified: true,
       workflowsVerified: true,
@@ -536,7 +410,16 @@ function analyzeLocalWorkspaceRepo(owner: string, repo: string): AnalysisReport 
     },
   };
 
-  return buildRepositoryAnalysisReport(input);
+  const report = buildRepositoryAnalysisReport(demoInput);
+  return {
+    ...report,
+    isDemo: true,
+    commitSha: null,
+    repository: {
+      ...report.repository,
+      headCommitSha: null,
+    },
+  };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -570,16 +453,6 @@ async function analyzeGitHubRepository(
     }
   }
 
-  // Inspecting the local open-source repo itself ("bytearcader-ai/bytearcader-repo")
-  if (!isCustomUpstream && repo.toLowerCase() === 'bytearcader-repo') {
-    const localReport = analyzeLocalWorkspaceRepo(owner, repo);
-    analysisCache.set(cacheKey, {
-      report: localReport,
-      expiresAt: Date.now() + CACHE_TTL_MS,
-    });
-    return localReport;
-  }
-
   const headers = getGitHubHeaders();
   const baseUrl = `${apiBase}/repos/${encodeURIComponent(
     owner
@@ -605,7 +478,7 @@ async function analyzeGitHubRepository(
     throw {
       status: 404,
       code: 'REPO_NOT_FOUND',
-      message: `Repository "${owner}/${repo}" was not found or is private. ByteArcadeR RepoGuard analyzes public GitHub repositories.`,
+      message: REPO_NOT_FOUND_MESSAGE,
       rateLimit,
     };
   }
@@ -668,7 +541,7 @@ async function analyzeGitHubRepository(
           throw {
             status: 404,
             code: 'REPO_NOT_FOUND',
-            message: `Repository "${owner}/${repo}" was not found or is private. ByteArcadeR RepoGuard analyzes public GitHub repositories.`,
+            message: REPO_NOT_FOUND_MESSAGE,
             rateLimit,
           };
         }
@@ -848,7 +721,6 @@ async function analyzeGitHubRepository(
     verification.docsDirVerified = !treeTruncated || docsContents.length > 0;
   }
 
-  // Step 1 of fast secondary resolution: fetch Atom commits feed first (~120ms) to obtain commitsData AND headCommitSha
   if (!verification.commitsVerified && !isCustomUpstream) {
     try {
       const atomRes = await fetchWithTimeout(
@@ -871,7 +743,6 @@ async function analyzeGitHubRepository(
     }
   }
 
-  // Step 2 of fast secondary resolution: use headCommitSha with tree-list (~300ms) to populate rootContents, treePaths, .github, workflows, and docs
   if ((!verification.rootContentsVerified || !verification.treeVerified) && !isCustomUpstream) {
     const populateFromTreeList = async (oid: string): Promise<boolean> => {
       const tlRes = await fetchWithTimeout(
@@ -1110,7 +981,12 @@ export function createApp(serverOptions: RepoGuardServerOptions = {}) {
     });
   });
 
-  // Shared handler for GET and POST /api/analyze
+  // Explicitly separated Offline DEMO Mode endpoint (never queries or impersonates a GitHub repository)
+  app.get('/api/demo', (_req: Request, res: Response) => {
+    res.json(buildOfflineDemoReport());
+  });
+
+  // Shared handler for GET and POST /api/analyze (strictly live GitHub API verification)
   const handleAnalyze = async (req: Request, res: Response) => {
     const rawRepo =
       (typeof req.query.repo === 'string' ? req.query.repo : '') ||
@@ -1161,10 +1037,19 @@ export function createApp(serverOptions: RepoGuardServerOptions = {}) {
 
 async function startServer() {
   const app = createApp();
+  const httpServer = http.createServer(app);
 
   if (process.env.NODE_ENV !== 'production') {
+    const hmrDisabled = process.env.DISABLE_HMR === 'true';
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        ws: {
+          server: httpServer,
+        },
+        hmr: hmrDisabled ? false : { server: httpServer },
+        watch: hmrDisabled ? null : {},
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -1176,7 +1061,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`ByteArcadeR RepoGuard server listening on http://0.0.0.0:${PORT}`);
   });
 }

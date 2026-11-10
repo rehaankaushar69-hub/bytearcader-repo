@@ -32,17 +32,17 @@ const ALL_22_CHECK_IDS = [
   'structure-clean',
 ];
 
-function createBaseInput(): RawGitHubAuditInput {
+function createMockedUnitTestInput(): RawGitHubAuditInput {
   const nowIso = '2026-11-07T00:00:00.000Z';
   return {
     nowIso,
     repo: {
-      owner: { login: 'bytearcader-ai' },
-      name: 'bytearcader-repo',
-      full_name: 'bytearcader-ai/bytearcader-repo',
-      html_url: 'https://github.com/bytearcader-ai/bytearcader-repo',
-      description: 'Protect Your Code. Improve Your Repository. Deterministic GitHub analyzer.',
-      homepage: 'https://github.com/bytearcader-ai/bytearcader-repo',
+      owner: { login: 'mock-test-org' },
+      name: 'mock-exemplary-fixture',
+      full_name: 'mock-test-org/mock-exemplary-fixture',
+      html_url: 'https://github.com/mock-test-org/mock-exemplary-fixture',
+      description: 'Mocked unit test fixture for deterministic rubric verification.',
+      homepage: 'https://example.org',
       default_branch: 'main',
       stargazers_count: 42,
       forks_count: 8,
@@ -87,7 +87,7 @@ function createBaseInput(): RawGitHubAuditInput {
     readme: {
       exists: true,
       name: 'README.md',
-      content: `# ByteArcadeR RepoGuard
+      content: `# Mock Exemplary Fixture
 
 Protect Your Code. Improve Your Repository.
 
@@ -106,7 +106,7 @@ npm run dev
 ## Usage
 Query the REST endpoint or use the interactive dashboard:
 \`\`\`bash
-curl http://localhost:3000/api/analyze?repo=bytearcader-ai/bytearcader-repo
+curl http://localhost:3000/api/analyze?repo=vitejs/vite
 \`\`\`
 
 ## Contributing & License
@@ -114,13 +114,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [LICENSE](LICENSE) for full details. 
 `,
     },
     commits: Array.from({ length: 12 }).map((_, idx) => ({
-      sha: `a1b2c3d4e5f600${idx}`,
-      html_url: `https://github.com/bytearcader-ai/bytearcader-repo/commit/${idx}`,
+      sha: `99887766554400${idx}`,
+      html_url: `https://github.com/mock-test-org/mock-exemplary-fixture/commit/${idx}`,
       commit: {
         message: `feat: commit ${idx}`,
-        author: { name: 'ByteArcadeR AI', date: '2026-11-05T00:00:00.000Z' },
+        author: { name: 'Mock Author', date: '2026-11-05T00:00:00.000Z' },
       },
-      author: { login: 'bytearcader-ai' },
+      author: { login: 'mock-author' },
     })),
     issues: [],
     rateLimit: {
@@ -132,14 +132,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [LICENSE](LICENSE) for full details. 
   };
 }
 
-test('1. Valid GitHub repository URLs and owner/repo formats parse accurately', () => {
+test('[MOCKED UNIT TEST] 1. Valid GitHub repository URLs and owner/repo formats parse accurately', () => {
   const cases = [
     { input: 'facebook/react', owner: 'facebook', repo: 'react' },
     { input: 'https://github.com/vitejs/vite', owner: 'vitejs', repo: 'vite' },
     { input: 'https://github.com/expressjs/express.git', owner: 'expressjs', repo: 'express' },
     {
-      input: 'http://www.github.com/bytearcader-ai/bytearcader-repo/tree/main',
-      owner: 'bytearcader-ai',
+      input: 'http://www.github.com/rehaankaushar69-hub/bytearcader-repo/tree/main',
+      owner: 'rehaankaushar69-hub',
       repo: 'bytearcader-repo',
     },
     { input: 'github.com/tailwindlabs/tailwindcss', owner: 'tailwindlabs', repo: 'tailwindcss' },
@@ -153,7 +153,7 @@ test('1. Valid GitHub repository URLs and owner/repo formats parse accurately', 
   }
 });
 
-test('2. Invalid repository URLs are rejected with clear error messages', () => {
+test('[MOCKED UNIT TEST] 2. Invalid repository URLs are rejected with clear error messages', () => {
   const invalidInputs = [
     '',
     '   ',
@@ -171,8 +171,8 @@ test('2. Invalid repository URLs are rejected with clear error messages', () => 
   }
 });
 
-test('3. Exemplary repository verifies all 22 checks with PASS status, scoringRule, evidence arrays, commitSha, analyzedAt, and 100/100 score', () => {
-  const input = createBaseInput();
+test('[MOCKED UNIT TEST] 3. Exemplary mocked fixture verifies all 22 checks with PASS status, scoringRule, evidence arrays, commitSha, analyzedAt, and 100/100 score', () => {
+  const input = createMockedUnitTestInput();
   const report = buildRepositoryAnalysisReport(input);
 
   assert.equal(report.overallScore, 100);
@@ -183,8 +183,8 @@ test('3. Exemplary repository verifies all 22 checks with PASS status, scoringRu
   assert.equal(report.failedChecks.length, 0);
   assert.equal(report.notVerifiedChecks.length, 0);
   assert.equal(report.notApplicableChecks.length, 0);
-  assert.equal(report.commitSha, 'a1b2c3d4e5f6000');
-  assert.equal(report.repository.headCommitSha, 'a1b2c3d4e5f6000');
+  assert.equal(report.commitSha, '998877665544000');
+  assert.equal(report.repository.headCommitSha, '998877665544000');
   assert.equal(report.analyzedAt, '2026-11-07T00:00:00.000Z');
 
   const checkIds = report.passedChecks.map((c) => c.id);
@@ -198,14 +198,14 @@ test('3. Exemplary repository verifies all 22 checks with PASS status, scoringRu
   }
 });
 
-test('4. Missing README deducts 25 README points and 6 documentation link points with concrete FAIL evidence', () => {
-  const input = createBaseInput();
+test('[MOCKED UNIT TEST] 4. Missing README deducts 25 README points and 6 documentation link points with concrete FAIL evidence', () => {
+  const input = createMockedUnitTestInput();
   input.readme = { exists: false, name: null, content: '' };
   input.rootContents = input.rootContents.filter((f) => f.name !== 'README.md');
 
   const report = buildRepositoryAnalysisReport(input);
   assert.equal(report.categories.readme.score, 0);
-  assert.equal(report.categories.documentation.score, 4); // CHANGELOG + docs still present (4 pts), link check loses 6 pts
+  assert.equal(report.categories.documentation.score, 4);
   assert.equal(report.categories.documentation.applicableMaxScore, 10);
   assert.equal(report.overallScore, 69);
 
@@ -217,22 +217,22 @@ test('4. Missing README deducts 25 README points and 6 documentation link points
   }
 });
 
-test('5. Missing license deducts all 15 license points and flags broken LICENSE link in README (-3 pts)', () => {
-  const input = createBaseInput();
+test('[MOCKED UNIT TEST] 5. Missing license deducts all 15 license points and flags broken LICENSE link in README (-3 pts)', () => {
+  const input = createMockedUnitTestInput();
   input.repo.license = null;
   input.rootContents = input.rootContents.filter((f) => f.name !== 'LICENSE');
 
   const report = buildRepositoryAnalysisReport(input);
   assert.equal(report.categories.license.score, 0);
-  assert.equal(report.categories.documentation.score, 7); // -3 pts for broken [LICENSE](LICENSE) link in README
+  assert.equal(report.categories.documentation.score, 7);
   assert.equal(report.overallScore, 82);
   const licenseDed = report.deductions.find((d) => d.id === 'deduct-license-present');
   assert.ok(licenseDed);
   assert.equal(licenseDed.pointsLost, 10);
 });
 
-test('6. Missing community health files deducts 20 community points and flags broken CONTRIBUTING link (-3 pts)', () => {
-  const input = createBaseInput();
+test('[MOCKED UNIT TEST] 6. Missing community health files deducts 20 community points and flags broken CONTRIBUTING link (-3 pts)', () => {
+  const input = createMockedUnitTestInput();
   input.rootContents = input.rootContents.filter(
     (f) => !['CONTRIBUTING.md', 'SECURITY.md', 'CODE_OF_CONDUCT.md'].includes(f.name)
   );
@@ -245,7 +245,7 @@ test('6. Missing community health files deducts 20 community points and flags br
   assert.equal(report.categories.community.deductions.length, 4);
 });
 
-test('7. False-positive prevention: unverified external links, empty workflows dir, and deep missing relative paths are caught', () => {
+test('[MOCKED UNIT TEST] 7. False-positive prevention: unverified external links, empty workflows dir, and deep missing relative paths are caught', () => {
   const rootPaths = new Set(['readme.md', 'license', 'src']);
   const subPaths = new Set(['docs/architecture.md']);
   const treePaths = new Set(['readme.md', 'license', 'src/index.ts', 'docs/architecture.md']);
@@ -262,8 +262,7 @@ Check out our [License](LICENSE), [Architecture](docs/ARCHITECTURE.md),
   assert.equal(unverified.length, 1);
   assert.equal(unverified[0].url, 'https://example.org/docs');
 
-  // Also verify that an empty .github/workflows directory (0 .yml files) fails structure-ci
-  const input = createBaseInput();
+  const input = createMockedUnitTestInput();
   input.workflowsContents = [];
   const report = buildRepositoryAnalysisReport(input);
   const ciCheck = report.failedChecks.find((c) => c.id === 'structure-ci');
@@ -272,8 +271,8 @@ Check out our [License](LICENSE), [Architecture](docs/ARCHITECTURE.md),
   assert.equal(ciCheck.status, 'FAIL');
 });
 
-test('8. NOT_VERIFIED checks never award points (0 pts awarded when endpoints cannot be verified)', () => {
-  const input = createBaseInput();
+test('[MOCKED UNIT TEST] 8. NOT_VERIFIED checks never award points (0 pts awarded when endpoints cannot be verified)', () => {
+  const input = createMockedUnitTestInput();
   input.readme = { exists: false, name: null, content: '' };
   input.rootContents = [];
   input.githubDirContents = [];
@@ -294,7 +293,6 @@ test('8. NOT_VERIFIED checks never award points (0 pts awarded when endpoints ca
 
   const report = buildRepositoryAnalysisReport(input);
 
-  // Every unverified check must have status === 'NOT_VERIFIED' and scoreAwarded === 0
   assert.ok(report.notVerifiedChecks.length >= 18);
   for (const chk of report.notVerifiedChecks) {
     assert.equal(chk.status, 'NOT_VERIFIED');
@@ -304,13 +302,12 @@ test('8. NOT_VERIFIED checks never award points (0 pts awarded when endpoints ca
   }
 });
 
-test('9. README with zero links marks docs-links as NOT_APPLICABLE, excludes 6 pts from applicableMaxScore (94 pts), and does not penalize the repository', () => {
-  const input = createBaseInput();
-  // Provide a comprehensive link-free README (>= 800 characters) that satisfies all 6 README checks
+test('[MOCKED UNIT TEST] 9. README with zero links marks docs-links as NOT_APPLICABLE, excludes 6 pts from applicableMaxScore (94 pts), and does not penalize the repository', () => {
+  const input = createMockedUnitTestInput();
   input.readme = {
     exists: true,
     name: 'README.md',
-    content: `# ByteArcadeR RepoGuard
+    content: `# Mock Link-Free Repository
 
 Protect Your Code. Improve Your Repository.
 
@@ -330,7 +327,7 @@ npm run dev
 ## Usage
 Run the CLI or query the HTTP endpoint directly:
 \`\`\`bash
-curl http://localhost:3000/api/analyze?repo=bytearcader-ai/bytearcader-repo
+curl http://localhost:3000/api/analyze?repo=vitejs/vite
 \`\`\`
 
 ## Contributing & License
@@ -340,7 +337,6 @@ Please read CONTRIBUTING.md for pull request guidelines, CODE_OF_CONDUCT.md for 
 
   const report = buildRepositoryAnalysisReport(input);
 
-  // docs-links must be in notApplicableChecks, NOT in passedChecks, failedChecks, or notVerifiedChecks
   assert.equal(report.notApplicableChecks.length, 1);
   assert.equal(report.notApplicableChecks[0].id, 'docs-links');
   assert.equal(report.notApplicableChecks[0].status, 'NOT_APPLICABLE');
@@ -350,7 +346,6 @@ Please read CONTRIBUTING.md for pull request guidelines, CODE_OF_CONDUCT.md for 
   assert.equal(report.notVerifiedChecks.length, 0);
   assert.equal(report.deductions.length, 0);
 
-  // Fair scoring: 94 raw points out of 94 applicable points normalizes to 100/100 (A+)
   assert.equal(report.rawScore, 94);
   assert.equal(report.applicableMaxScore, 94);
   assert.equal(report.overallScore, 100);

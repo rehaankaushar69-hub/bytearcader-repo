@@ -19,7 +19,7 @@ import { AnalysisReport } from './types/repoguard';
 
 export default function App() {
   const [activePage, setActivePage] = useState<AppPage>('landing');
-  const [repoInput, setRepoInput] = useState<string>('bytearcader-ai/bytearcader-repo');
+  const [repoInput, setRepoInput] = useState<string>('');
   const [report, setReport] = useState<AnalysisReport | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +28,7 @@ export default function App() {
   const runAnalysis = async (repoIdentifier: string, refresh = false) => {
     setIsLoading(true);
     setError(null);
+    setReport(null);
     setActivePage('dashboard');
 
     try {
@@ -38,28 +39,51 @@ export default function App() {
       const data = await res.json();
 
       if (!res.ok) {
+        setReport(null);
         setError(data?.message || `Failed to analyze repository (${res.status}).`);
         return;
       }
 
       setReport(data as AnalysisReport);
     } catch {
+      setReport(null);
       setError('Network error while contacting the ByteArcadeR RepoGuard analysis server.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Pre-load initial self-audit report or ?repo= query param so the dashboard is immediately testable
+  const runDemoMode = async () => {
+    setIsLoading(true);
+    setError(null);
+    setReport(null);
+    setActivePage('dashboard');
+
+    try {
+      const res = await fetch('/api/demo');
+      const data = await res.json();
+      if (!res.ok) {
+        setError('Unable to load offline Demo Mode report.');
+        return;
+      }
+      setReport(data as AnalysisReport);
+    } catch {
+      setError('Unable to load offline Demo Mode report.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Support optional ?repo=<owner/repo> or ?demo=1 query parameters
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const queryRepo = params.get('repo');
-    const autostart = params.get('autostart');
+    const demoParam = params.get('demo');
     if (queryRepo) {
       setRepoInput(queryRepo);
       runAnalysis(queryRepo);
-    } else if (autostart === '1') {
-      runAnalysis('bytearcader-ai/bytearcader-repo');
+    } else if (demoParam === '1') {
+      runDemoMode();
     }
   }, []);
 
@@ -95,6 +119,7 @@ export default function App() {
             repoInput={repoInput}
             setRepoInput={setRepoInput}
             onAnalyze={(repo) => runAnalysis(repo)}
+            onRunDemo={runDemoMode}
             isLoading={isLoading}
             error={error}
             onNavigate={handleNavigate}
@@ -108,6 +133,7 @@ export default function App() {
             repoInput={repoInput}
             setRepoInput={setRepoInput}
             onAnalyze={(repo, refresh) => runAnalysis(repo, refresh)}
+            onRunDemo={runDemoMode}
             isLoading={isLoading}
             error={error}
           />
@@ -120,6 +146,7 @@ export default function App() {
               setRepoInput(repo);
               runAnalysis(repo);
             }}
+            onRunDemo={runDemoMode}
           />
         )}
 
@@ -132,6 +159,7 @@ export default function App() {
               setRepoInput(repo);
               runAnalysis(repo);
             }}
+            onRunDemo={runDemoMode}
           />
         )}
 

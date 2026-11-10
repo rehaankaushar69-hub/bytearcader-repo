@@ -208,6 +208,7 @@ export interface EndpointVerificationFlags {
 }
 
 export interface AnalysisReport {
+  isDemo?: boolean;
   analyzedAt: string;
   commitSha: string | null;
   cached: boolean;

@@ -16,7 +16,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [20.x, 22.x]
+        node-version: [22.x]
 
     steps:
       - name: Checkout repository
@@ -27,14 +27,15 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
+          cache-dependency-path: package-lock.json
 
-      - name: Install dependencies
+      - name: Install dependencies (clean lockfile verification)
         run: npm ci
 
       - name: TypeScript typecheck
         run: npm run lint
 
-      - name: Run automated unit tests (Vitest)
+      - name: Run automated unit & integration tests (Vitest)
         run: npm test
 
       - name: Run Node test runner verification
