@@ -1,0 +1,6 @@
+{
+  "name": "ByteArcadeR RepoGuard",
+  "description": "Protect Your Code. Improve Your Repository. Open-source GitHub repository health, security, documentation, and structure analyzer developed by ByteArcadeR AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
